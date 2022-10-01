@@ -56,12 +56,13 @@ class shipstation_api
         }
 
         foreach ($records[0]->shipments as $shipment_info) {
-            $order_info = [];       // TODO get CMS order info by $shipment_info->orderNumber
+            $order_info = [];       // TODO get your CMS order and label info by $shipment_info->orderNumber
+            $label_info = [];
             if (empty($order_info)) {
                 continue;
             }
 
-            shipstation_data_converter::set_shipment_to_cms_order($order_info, $shipment_info, $is_item_hook);
+            shipstation_data_converter::set_shipment_to_cms_order($order_info, $label_info, $shipment_info, $is_item_hook);
         }
     }
 

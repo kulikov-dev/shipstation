@@ -3,7 +3,7 @@
 namespace kulikov_dev\connectors\shipstation;
 
 /**
- * Class shipstation_data_converter required to process data from your CMS data object to ShipStatoin and vice versa.
+ * Class shipstation_data_converter required to process data from your CMS data object to ShipStation and vice versa.
  * (!) Need to adapt each CMS arrays for specific data model
  * @package kulikov_dev\connectors\shipstation
  */
@@ -60,41 +60,50 @@ class shipstation_data_converter
         return $shipstation_result;
     }
 
-    public static function set_shipment_to_cms_order($cms_order_info, $shipstation_webhook_info, $is_item_hook)
+    /** Upload shipment information from a ShipStation webhook to a CMS order info
+     * @param array $cms_order_info CMS order array
+     * @param array $cms_label_info CMS label array
+     * @param object $shipstation_webhook_info Object about shipment from ShipStation
+     * @param bool $is_item_hook Flag if a webhook about updating line items. In other case - about a whole order.
+     * @return array Updated CMS order array
+     */
+    public static function set_shipment_to_cms_order($cms_order_info, $cms_label_info, $shipstation_webhook_info, $is_item_hook)
     {
         $cms_order_info["DELIVERY_STATUS"] = 2;
         $cms_order_info["TRACKING_NUMBER"] = $shipstation_webhook_info->trackingNumber;
 
-        if (stripos($shipstation_webhook_info->carrierCode, "ups") !== false || stripos($shipstation_webhook_info->serviceCode, "ups") !== false) {
-            $cms_order_info["PROVIDER"] = "UPS";
-        } elseif (stripos($shipstation_webhook_info->carrierCode, "usps") !== false || stripos($shipstation_webhook_info->serviceCode, "usps") !== false) {
-            $cms_order_info["PROVIDER"] = "USPS";
-        } elseif (stripos($shipstation_webhook_info->carrierCode, "fedex") !== false || stripos($shipstation_webhook_info->serviceCode, "fedex") !== false) {
-            $cms_order_info["PROVIDER"] = "FEDEX";
-        } else {
-            $cms_order_info["PROVIDER"] = "CUSTOM";
-        }
-
-        $cms_order_info["TRACKING_NUMBER"] = $shipstation_webhook_info->trackingNumber;
-        $cms_order_info["ORDER_ID"] = $shipstation_webhook_info->orderNumber;
-        if (!empty($shipstation_webhook_info->weight)) {
-            if ($shipstation_webhook_info->weight->units == 'ounces') {
-                $cms_order_info["WEIGHT_OZ"] = $shipstation_webhook_info->weight->value ?: 0;
-            } elseif ($shipstation_webhook_info->weight->units == 'pounds') {
-                $cms_order_info["WEIGHT_LB"] = $shipstation_webhook_info->weight->value ?: 0;
+        if (!empty($cms_label_info)) {
+            if (stripos($shipstation_webhook_info->carrierCode, "ups") !== false || stripos($shipstation_webhook_info->serviceCode, "ups") !== false) {
+                $cms_label_info["PROVIDER"] = "UPS";
+            } elseif (stripos($shipstation_webhook_info->carrierCode, "usps") !== false || stripos($shipstation_webhook_info->serviceCode, "usps") !== false) {
+                $cms_label_info["PROVIDER"] = "USPS";
+            } elseif (stripos($shipstation_webhook_info->carrierCode, "fedex") !== false || stripos($shipstation_webhook_info->serviceCode, "fedex") !== false) {
+                $cms_label_info["PROVIDER"] = "FEDEX";
             } else {
-                // Gram's
-                $cms_order_info["WEIGHT_OZ"] = ($shipstation_webhook_info->weight->value ?: 0) / 28.35;
+                $cms_label_info["PROVIDER"] = "CUSTOM";
             }
-        }
 
-        $cms_order_info["LENGTH"] = empty($shipstation_webhook_info->dimensions) ? 0 : $shipstation_webhook_info->dimensions->length ?: 0;
-        $cms_order_info["WIDTH"] = empty($shipstation_webhook_info->dimensions) ? 0 : $shipstation_webhook_info->dimensions->width ?: 0;
-        $cms_order_info["METHOD_NAME"] = $shipstation_webhook_info->serviceCode;
-        $cms_order_info["PACKAGE"] = $shipstation_webhook_info->packageCode;
-        $cms_order_info["PRICE"] = $shipstation_webhook_info->shipmentCost ?: 0;
-        $cms_order_info["THE_TIME"] = $shipstation_webhook_info->shipDate;
-        $cms_order_info["STATUS"] = 'SHIPPED';
+            $cms_label_info["TRACKING_NUMBER"] = $shipstation_webhook_info->trackingNumber;
+            $cms_label_info["ORDER_ID"] = $shipstation_webhook_info->orderNumber;
+            if (!empty($shipstation_webhook_info->weight)) {
+                if ($shipstation_webhook_info->weight->units == 'ounces') {
+                    $cms_label_info["WEIGHT_OZ"] = $shipstation_webhook_info->weight->value ?: 0;
+                } elseif ($shipstation_webhook_info->weight->units == 'pounds') {
+                    $cms_label_info["WEIGHT_LB"] = $shipstation_webhook_info->weight->value ?: 0;
+                } else {
+                    // Gram's
+                    $cms_label_info["WEIGHT_OZ"] = ($shipstation_webhook_info->weight->value ?: 0) / 28.35;
+                }
+            }
+
+            $cms_label_info["LENGTH"] = empty($shipstation_webhook_info->dimensions) ? 0 : $shipstation_webhook_info->dimensions->length ?: 0;
+            $cms_label_info["WIDTH"] = empty($shipstation_webhook_info->dimensions) ? 0 : $shipstation_webhook_info->dimensions->width ?: 0;
+            $cms_label_info["METHOD_NAME"] = $shipstation_webhook_info->serviceCode;
+            $cms_label_info["PACKAGE"] = $shipstation_webhook_info->packageCode;
+            $cms_label_info["PRICE"] = $shipstation_webhook_info->shipmentCost ?: 0;
+            $cms_label_info["THE_TIME"] = $shipstation_webhook_info->shipDate;
+            $cms_label_info["STATUS"] = 'SHIPPED';
+        }
 
         if ($is_item_hook) {
             foreach ($shipstation_webhook_info->shipmentItems as $shipment_item) {
@@ -108,6 +117,7 @@ class shipstation_data_converter
                     }
 
                     $line_item["ORDER_ID"] = $shipstation_webhook_info->orderNumber;
+                    $line_item["LABEL_ID"] = $cms_label_info["ID"];
                     $line_item["ORDERED_ITEM_ID"] = $shipment_item->lineItemKey;
                     $line_item["THE_TIME"] = $shipstation_webhook_info->shipDate;
                     break;
