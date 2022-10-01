@@ -34,20 +34,20 @@ class shipstation_connector
      */
     public function open_connection()
     {
-        // TODO: Load key, password and entry point from your config.
+        // TODO: Load key, password from your config.
         $key = "";
-        $password = "";
-        $this->entry_point = "";
+        $secret = "";
+        $this->entry_point = "https://ssapi.shipstation.com";
 
-        if ($this->key == null || $this->entry_point == null) {
-            view('Initialize credentials and API entry point first.');
+        if ($key == null || $this->entry_point == null) {
+            print('Initialize credentials and API entry point first.');
             return;
         }
 
         try {
-            $this->basic_auth = base64_encode($this->key . ':' . $this->secret);
+            $this->basic_auth = base64_encode($key . ':' . $secret);
         } catch (Exception $exception) {
-            view('Fatal Error during ShipStation connection: ' . $exception->getMessage());
+            print('Fatal Error during ShipStation connection: ' . $exception->getMessage());
         }
     }
 
@@ -59,7 +59,7 @@ class shipstation_connector
     public function upload_record($search_url, $query)
     {
         if (empty($this->basic_auth)) {
-            view('Open ShipStation connection before trying to find records.');
+            print('Open ShipStation connection before trying to find records.');
             return [];
         }
 
@@ -91,8 +91,7 @@ class shipstation_connector
 
             return [$response];
         } catch (Exception $exception) {
-            print($exception->getMessage());
-            view('Fatal error during uploading record to ShipStation database: ' . $exception->getMessage());
+            print('Fatal error during uploading record to ShipStation database: ' . $exception->getMessage());
         }
 
         return [];
